@@ -21,6 +21,7 @@ ROOT_COLUMNS = [
     "gitlab_project",
     "ref_name",
     "target_rev",
+    "target_present",
 ]
 SECTION_COLUMNS = ["root_id", "svn_repo", "svn_path", "from_rev", "to_rev"]
 SVN_ROOT_COLUMNS = ["svn_repo"]
@@ -259,10 +260,19 @@ def inspect_repository(name, roots, source_dir, authors):
             ],
             check=False,
         )
-        if kind.returncode or kind.stdout.strip() != "tree":
+        # 目標revision時点の存在状態はTSVで指定し、SVNの内容から推測しない。
+        if root["target_present"] and (
+            kind.returncode or kind.stdout.strip() != "tree"
+        ):
             fail(
                 f"{root['root_id']}: project_root {root['project_root']!r} "
-                f"is absent at imported r{source_state['rev']}"
+                f"is not a directory at imported r{source_state['rev']}"
+            )
+        if not root["target_present"] and kind.returncode == 0:
+            fail(
+                f"{root['root_id']}: project_root {root['project_root']!r} "
+                f"was expected to be absent at imported r{source_state['rev']}, "
+                f"but is a {kind.stdout.strip()}"
             )
     return {
         **git_source_metadata(repo),
@@ -314,6 +324,10 @@ def validate_config(args):
         if row["ref_type"] != "trunk" and row["ref_name"] in ("main", "HEAD"):
             fail(f"{row['root_id']}: {row['ref_type']} ref_name cannot be {row['ref_name']!r}")
         row["target_rev"] = parse_revision(row["target_rev"], f"{row['root_id']}.target_rev")
+        # 削除済みrootも履歴として出力できるよう、最終treeの有無を設定で固定する。
+        if row["target_present"] not in ("true", "false"):
+            fail(f"{row['root_id']}: target_present must be 'true' or 'false'")
+        row["target_present"] = row["target_present"] == "true"
         ref_key = (row["gitlab_project"], row["ref_type"], row["ref_name"])
         if ref_key in ref_keys:
             fail(f"Duplicate target ref: {row['gitlab_project']} {row['ref_type']} {row['ref_name']}")
