@@ -1,0 +1,98 @@
+「対象外」は、最終状態にないプロジェクトの独立Gitリポジトリを作らない意味と解釈します。現存プロジェクトの系譜に必要なコピー元履歴は、そのGit履歴の祖先として含める前提で、最終root限定の取込スクリプトと制約を明記した手順を用意します。
+
+Edit , 
+
+変換スクリプトを追加しました。最終revisionで存在するrootだけを取り込み対象にし、存在確認・明示fetch・Git ref作成・snapshot比較・fsckまで行います。まず既存のローカルPoC SVN fixtureだけで動作を確認し、本番SVNには接続しません。
+
+Ran terminal command: python3 -B bin/import-final-svn-roots.py --help; python3 -B -c 'import ast,pathlib; ast.parse(pathlib.Path("bin/import-final-svn-roots.py").read_text(encoding="utf-8")); print("Python syntax OK")'
+
+Ran terminal command: PYTHONDONTWRITEBYTECODE=1 python3 -B -m unittest discover -s poc-git-svn-explicit-fetch/tests -v
+
+Ran terminal command: python3 -B - <<'PY'
+import pathlib, subprocess, sys, tempfile
+workspace = pathlib.Path.cwd()
+svn_repo = workspace / 'poc-git-svn-explicit-fetch/artifacts/svn-repository'
+script = workspace / 'bin/import-final-svn-roots.py'
+with tempfile.TemporaryDirectory(prefix='final-root-import-smoke-') as tmp:
+    tmp_path = pathlib.Path(tmp)
+    manifest = tmp_path / 'roots.tsv'
+    manifest.write_text(
+        'project_id\tsvn_path\tkind\tfetch_ref\ttarget_ref\n'
+        'smoke\tproducts/project-A/trunk\ttrunk\trefs/remotes/svn/smoke/trunk\trefs/heads/main\n',
+        encoding='utf-8',
+    )
+    output = tmp_path / 'output'
+    subprocess.run(
+        [sys.executable, str(script), '--svn-url', svn_repo.as_uri(), '--manifest', str(manifest), '--output', str(output)],
+        check=True,
+    )
+    summary = (output / 'conversion-summary.tsv').read_text(encoding='utf-8')
+    print(summary)
+    assert 'smoke\tproducts/project-A/trunk\ttrunk\trefs/heads/main\tTrue\t1\t1' in summary
+    assert subprocess.run(['git', '-C', str(output / 'smoke'), 'show-ref', '--verify', 'refs/heads/main'], check=False, capture_output=True).returncode == 0
+PY
+
+Edit 
+
+Ran terminal command: find bin poc-git-svn-explicit-fetch -type d -name __pycache__ -print; python3 -B bin/import-final-svn-roots.py --help >/dev/null; python3 -B -c 'import ast,pathlib; ast.parse(pathlib.Path("bin/import-final-svn-roots.py").read_text(encoding="utf-8")); print("Importer syntax OK")'
+
+Added 2 artifacts or references
+Completed with input: {
+  "items": [
+    {
+      "type": "file",
+      "label": "Final-root SVN importer",
+      "isArtifact": true,
+      "uri": "file:///home/maintainer/svn-test/bin/import-final-svn-roots.py"
+    },
+    {
+      "type": "file",
+      "label": "Final-root import guide",
+      "isArtifact": true,
+      "uri": "file:///home/maintainer/svn-test/bin/README-import-final-svn-roots.md"
+    }
+  ]
+}
+
+Edit , 
+
+Added reference "Final-root manifest example"
+Completed with input: {
+  "items": [
+    {
+      "type": "file",
+      "label": "Final-root manifest example",
+      "isArtifact": false,
+      "uri": "file:///home/maintainer/svn-test/config/examples/final-svn-roots.tsv"
+    }
+  ]
+}
+
+今回の範囲は、**指定revisionに存在するSVN rootだけを独立Gitリポジトリ化**する前提にしました。最終状態にない過去プロジェクトのリポジトリは作りません。一方、現存プロジェクトがSVN copyで過去のrootから派生している場合、そのコピー元履歴は現存プロジェクトの祖先として取り込む想定です。
+
+### 実行戦略
+
+1. 最終revisionのSVNを確認し、移行対象rootとGitLabプロジェクト・branch/tagの割当をレビューしてTSV化。
+2. TSVの各rootが最終revisionにディレクトリとして存在することを検証。存在しない過去rootは登録せず、誤って登録された場合は処理を停止。
+3. プロジェクトごとにGit repositoryを作成し、各rootをglobなしの明示的 `fetch` として設定して `git svn fetch`。
+4. `trunk → main`、branch・tagはTSV指定のrefに割り当て、SVN exportとのtree比較と `git fsck` を実施。
+5. GitLab作成・pushは行わず、ローカル出力をレビューしてから次工程へ進む。
+
+### 変換用ファイル
+
+- `変換スクリプト`
+- `実行手順と制約`
+- `manifest例`
+
+実行例：
+
+```bash
+python3 bin/import-final-svn-roots.py \
+  --svn-url file:///srv/svn/repository \
+  --manifest config/examples/final-svn-roots.tsv \
+  --revision HEAD \
+  --authors-file config/authors.txt \
+  --output git/final-state-import
+```
+
+ローカルPoC fixtureで、1 rootの取込・tree比較まで確認済みです。なお、先のPoCではディレクトリcopy系譜は確認できましたが、**ファイル単位copyはPARTIAL、同一パスの削除・再利用はUNSUPPORTED**でした。このスクリプトはその系譜を自動解決しないため、該当rootはレビュー済みのpath/revision変換経路に回してください。本番SVNへの実行や100GB規模の性能検証はしていません。

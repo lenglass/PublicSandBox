@@ -1,0 +1,4 @@
+project_id	svn_path	kind	fetch_ref	target_ref
+project-A	products/A/trunk	trunk	refs/remotes/svn/project-A/trunk	refs/heads/main
+project-A	archive/A-hotfix	branch	refs/remotes/svn/project-A/hotfix	refs/heads/hotfix
+project-A	products/A/tags/1.0	tag	refs/remotes/svn/project-A/tag-1.0	refs/tags/1.0
