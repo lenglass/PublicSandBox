@@ -453,9 +453,9 @@ def convert(args):
     # jobs件のsource-size上位値は初期の容量判断用。実行中はfree-spaceを再確認する。
     concurrent_bound = sum(sorted(source_sizes, reverse=True)[:args.jobs])
     free_bytes = shutil.disk_usage(work_dir).free
-    output_free_bytes = shutil.disk_usage(output.parent).free
+    output_free_bytes = shutil.disk_usage(output).free
     scratch_capacity = int(min(free_bytes, output_free_bytes) * 0.8)
-    scratch_budget = ScratchBudget(scratch_capacity, work_dir, output.parent)
+    scratch_budget = ScratchBudget(scratch_capacity, work_dir, output)
     print(
         f"Source objects: {sum(source_sizes) / (1024 ** 3):.1f} GiB total; "
         f"temporary clones use shared object stores (no full clone copy)."
