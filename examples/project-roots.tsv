@@ -1,0 +1,4 @@
+root_id	svn_repo	project_root	ref_type	gitlab_project	ref_name	target_rev
+appa-main	svn-lineage-lab	01-basic/main/trunk/AppA	trunk	example/app-a	main	19
+appa-work	svn-lineage-lab	01-basic/work/AppA	branch	example/app-a	work	10
+appa-v1	svn-lineage-lab	01-basic/tags/AppA-v1	tag	example/app-a	v1	14

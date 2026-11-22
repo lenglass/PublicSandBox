@@ -1,0 +1,10 @@
+root_id	svn_repo	svn_path	from_rev	to_rev
+appa-main	svn-lineage-lab	01-basic/main/trunk/AppA	4	6
+appa-main	svn-lineage-lab	01-basic/work/AppA	7	10
+appa-main	svn-lineage-lab	01-basic/tags/AppA-v1	11	14
+appa-main	svn-lineage-lab	01-basic/main/trunk/AppA	15	19
+appa-work	svn-lineage-lab	01-basic/main/trunk/AppA	4	6
+appa-work	svn-lineage-lab	01-basic/work/AppA	7	10
+appa-v1	svn-lineage-lab	01-basic/main/trunk/AppA	4	6
+appa-v1	svn-lineage-lab	01-basic/work/AppA	7	10
+appa-v1	svn-lineage-lab	01-basic/tags/AppA-v1	11	14
